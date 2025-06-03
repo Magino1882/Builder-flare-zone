@@ -99,14 +99,23 @@ export class BrushingStorage {
 
   // Check if brushed today
   static hasBrushedToday(): boolean {
-    const today = new Date().toISOString().split("T")[0];
+    const today = this.getTodayDateString();
     const entry = this.getEntryByDate(today);
     return entry?.confirmed || false;
   }
 
+  // Get today's date string in local timezone
+  static getTodayDateString(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
   // Mark brushing as confirmed for today
   static confirmBrushingToday(): BrushingEntry {
-    const today = new Date().toISOString().split("T")[0];
+    const today = this.getTodayDateString();
     const existing = this.getEntryByDate(today);
 
     if (existing) {

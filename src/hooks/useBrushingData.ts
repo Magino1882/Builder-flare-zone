@@ -50,10 +50,19 @@ export function useBrushingData(): UseBrushingDataReturn {
     loadData();
   }, [loadData]);
 
+  // Get today's date string in local timezone
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   // Computed values
   const todayEntry =
     entries.find((entry) => {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getTodayDateString();
       return entry.date === today;
     }) || null;
 

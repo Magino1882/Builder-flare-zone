@@ -49,13 +49,25 @@ export function CalendarGrid({
 
     const days: CalendarDay[] = [];
 
+    // Helper function to get date string in local timezone
+    const getLocalDateString = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // Get today's date string
+    const today = new Date();
+    const todayStr = getLocalDateString(today);
+
     // Previous month's trailing days
     const prevMonth = new Date(year, month - 1, 0);
     for (let i = startingDayOfWeek - 1; i >= 0; i--) {
       const day = prevMonth.getDate() - i;
       const date = new Date(year, month - 1, day);
-      const dateStr = date.toISOString().split("T")[0];
-      const entry = entries.find((e) => e.date === dateStr);
+      const dateStr = getLocalDateString(date);
+      const entry = entries.find(e => e.date === dateStr);
 
       days.push({
         date: dateStr,
@@ -68,12 +80,11 @@ export function CalendarGrid({
     }
 
     // Current month's days
-    const today = new Date();
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      const dateStr = date.toISOString().split("T")[0];
-      const entry = entries.find((e) => e.date === dateStr);
-      const isToday = date.toDateString() === today.toDateString();
+      const dateStr = getLocalDateString(date);
+      const entry = entries.find(e => e.date === dateStr);
+      const isToday = dateStr === todayStr;
 
       days.push({
         date: dateStr,
@@ -89,8 +100,8 @@ export function CalendarGrid({
     const remainingDays = 42 - days.length; // 6 weeks * 7 days
     for (let day = 1; day <= remainingDays; day++) {
       const date = new Date(year, month + 1, day);
-      const dateStr = date.toISOString().split("T")[0];
-      const entry = entries.find((e) => e.date === dateStr);
+      const dateStr = getLocalDateString(date);
+      const entry = entries.find(e => e.date === dateStr);
 
       days.push({
         date: dateStr,
@@ -100,6 +111,7 @@ export function CalendarGrid({
         isBrushed: entry?.confirmed || false,
         entry,
       });
+    }
     }
 
     return days;
