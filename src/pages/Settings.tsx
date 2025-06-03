@@ -24,6 +24,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { SettingsForm } from "@/components/settings/SettingsForm";
+import { Navigation } from "@/components/layout/Navigation";
 import { toast } from "sonner";
 import { BrushingStorage, SettingsStorage } from "@/lib/storage";
 import { useBrushingData } from "@/hooks/useBrushingData";

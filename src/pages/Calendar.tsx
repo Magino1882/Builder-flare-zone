@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { BrushingEntry } from "@/components/calendar/BrushingEntry";
 import { ReminderSystem } from "@/components/notifications/ReminderSystem";
+import { Navigation } from "@/components/layout/Navigation";
 import { cn } from "@/lib/utils";
 import { useBrushingData } from "@/hooks/useBrushingData";
 
