@@ -17,6 +17,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useReminders } from "@/hooks/useReminders";
 import { useBrushingData } from "@/hooks/useBrushingData";
+import { audioManager } from "@/lib/audio";
+import { formatTime } from "@/lib/timeFormat";
 
 interface ReminderSystemProps {
   className?: string;
@@ -60,12 +62,12 @@ export function ReminderSystem({ className }: ReminderSystemProps) {
     dismissReminder();
   };
 
-  const formatTime = (date: Date | null) => {
+  const formatDateTime = (date: Date | null) => {
     if (!date) return "--:--";
-    return date.toLocaleTimeString("de-DE", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const time24 = `${hours}:${minutes}`;
+    return formatTime(time24, settings.timeFormat);
   };
 
   const getTimeUntilNext = (date: Date | null) => {
@@ -258,7 +260,7 @@ export function ReminderSystem({ className }: ReminderSystemProps) {
 
               <div className="text-right">
                 <div className="text-sm font-semibold">
-                  {formatTime(nextReminder)}
+                  {formatDateTime(nextReminder)}
                 </div>
                 <div className="text-xs text-gray-500">
                   {getTimeUntilNext(nextReminder)}
@@ -274,7 +276,7 @@ export function ReminderSystem({ className }: ReminderSystemProps) {
               <div className="flex flex-wrap gap-2">
                 {settings.reminderTimes.map((time, index) => (
                   <Badge key={index} variant="secondary" className="text-sm">
-                    {time}
+                    {formatTime(time, settings.timeFormat)}
                   </Badge>
                 ))}
               </div>

@@ -48,23 +48,26 @@ export function SettingsForm({ className }: SettingsFormProps) {
   const handleAddReminderTime = () => {
     if (!newReminderTime) return;
 
-    // Validate time format
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(newReminderTime)) {
-      toast.error("Bitte gib eine gültige Zeit im Format HH:MM ein");
+    // Validate time format based on current setting
+    if (!isValidTimeFormat(newReminderTime, settings.timeFormat)) {
+      const formatExample = settings.timeFormat === '24h' ? 'HH:MM' : 'h:MM AM/PM';
+      toast.error(`Bitte gib eine gültige Zeit im Format ${formatExample} ein`);
       return;
     }
+
+    // Convert to 24h format for storage
+    const time24h = parseTimeInput(newReminderTime, settings.timeFormat);
 
     // Check if time already exists
-    if (settings.reminderTimes.includes(newReminderTime)) {
-      toast.error("Diese Erinnerungszeit existiert bereits");
+    if (settings.reminderTimes.includes(time24h)) {
+      toast.error('Diese Erinnerungszeit existiert bereits');
       return;
     }
 
-    const updatedTimes = [...settings.reminderTimes, newReminderTime].sort();
+    const updatedTimes = [...settings.reminderTimes, time24h].sort();
     updateSettings({ reminderTimes: updatedTimes });
-    setNewReminderTime("");
-    toast.success("Erinnerungszeit hinzugefügt");
+    setNewReminderTime('');
+    toast.success('Erinnerungszeit hinzugefügt');
   };
 
   const handleRemoveReminderTime = (timeToRemove: string) => {
@@ -149,38 +152,53 @@ export function SettingsForm({ className }: SettingsFormProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Current reminder times */}
-          <div className="space-y-2">
-            <Label>Aktuelle Erinnerungen</Label>
-            <div className="flex flex-wrap gap-2">
-              {settings.reminderTimes.map((time) => (
-                <motion.div
-                  key={time}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  className="flex items-center gap-1"
+        {/* Time Format Selection */}
+        <div className="space-y-2">
+          <Label>Zeitformat</Label>
+          <Select
+            value={settings.timeFormat}
+            onValueChange={(value: TimeFormat) => updateSettings({ timeFormat: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="24h">24-Stunden (HH:MM)</SelectItem>
+              <SelectItem value="12h">12-Stunden (h:MM AM/PM)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Current reminder times */}
+        <div className="space-y-2">
+          <Label>Aktuelle Erinnerungen</Label>
+          <div className="flex flex-wrap gap-2">
+            {settings.reminderTimes.map((time) => (
+              <motion.div
+                key={time}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="flex items-center gap-1"
+              >
+                <Badge variant="secondary" className="px-3 py-1">
+                  {formatTime(time, settings.timeFormat)}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveReminderTime(time)}
+                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                 >
-                  <Badge variant="secondary" className="px-3 py-1">
-                    {time}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveReminderTime(time)}
-                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </motion.div>
-              ))}
-              {settings.reminderTimes.length === 0 && (
-                <span className="text-sm text-gray-500">
-                  Keine Erinnerungen konfiguriert
-                </span>
-              )}
-            </div>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </motion.div>
+            ))}
+            {settings.reminderTimes.length === 0 && (
+              <span className="text-sm text-gray-500">Keine Erinnerungen konfiguriert</span>
+            )}
           </div>
+        }
 
           {/* Add new reminder time */}
           <div className="flex gap-2">
@@ -188,11 +206,14 @@ export function SettingsForm({ className }: SettingsFormProps) {
               <Label htmlFor="new-reminder">Neue Erinnerungszeit</Label>
               <Input
                 id="new-reminder"
-                type="time"
+                type={getTimeInputType(settings.timeFormat)}
                 value={newReminderTime}
                 onChange={(e) => setNewReminderTime(e.target.value)}
-                placeholder="HH:MM"
+                placeholder={getTimePlaceholder(settings.timeFormat)}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Format: {getTimePlaceholder(settings.timeFormat)}
+              </p>
             </div>
             <Button
               onClick={handleAddReminderTime}
@@ -338,26 +359,68 @@ export function SettingsForm({ className }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-      {/* Save Button */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="w-full"
-          size="lg"
+        {/* Audio Test Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TestTube className="h-5 w-5 text-blue-500" />
+              Audio-Test
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Teste verschiedene Sounds, um sicherzustellen, dass Audio funktioniert.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(AVAILABLE_SOUNDS).map(([key, sound]) => (
+                <Button
+                  key={key}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTestSound(key as SoundType)}
+                  disabled={isTestingSound === key || !settings.soundEnabled}
+                  className="flex items-center gap-2"
+                >
+                  {isTestingSound === key ? (
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                  ) : (
+                    <Volume2 className="h-3 w-3" />
+                  )}
+                  {sound.displayName}
+                </Button>
+              ))}
+            </div>
+            {!settings.soundEnabled && (
+              <Alert>
+                <Volume2 className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  Aktiviere Sound-Benachrichtigungen, um Töne zu testen.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Save Button */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
         >
-          {isSaving ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          Einstellungen speichern
-        </Button>
-      </motion.div>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-full"
+            size="lg"
+          >
+            {isSaving ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Einstellungen speichern
+          </Button>
+        </motion.div>
     </div>
   );
 }

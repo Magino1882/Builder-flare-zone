@@ -132,7 +132,7 @@ export class AudioManager {
       const audioCtx = initAudioContext();
 
       // Resume context if suspended (required for user interaction)
-      if (audioCtx.state === "suspended") {
+      if (audioCtx.state === 'suspended') {
         await audioCtx.resume();
       }
 
@@ -163,8 +163,33 @@ export class AudioManager {
         });
       }
     } catch (error) {
-      console.error("Error playing sound:", error);
+      console.error('Error playing sound:', error);
+      // Fallback: try simple beep
+      this.playFallbackSound();
     }
+  }
+
+  // Fallback sound when AudioContext fails
+  private playFallbackSound(): void {
+    try {
+      // Create a simple beep using oscillator as fallback
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      gainNode.gain.value = this.volume * 0.3;
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.3);
+    } catch (error) {
+      console.warn('Audio fallback also failed:', error);
+    }
+  }
   }
 
   // Play reminder sound

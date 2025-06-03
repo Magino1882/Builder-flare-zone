@@ -12,6 +12,7 @@ export interface AppSettings {
   volume: number; // 0-1
   selectedSound: string;
   alarmDelay: number; // minutes
+  timeFormat: "12h" | "24h"; // Time format preference
 }
 
 export interface BrushingStats {
@@ -34,6 +35,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   volume: 0.7,
   selectedSound: "chime",
   alarmDelay: 30,
+  timeFormat: "24h",
 };
 
 // Storage utilities with SQL-like interface
