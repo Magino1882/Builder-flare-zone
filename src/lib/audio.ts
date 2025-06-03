@@ -15,7 +15,7 @@ export const AVAILABLE_SOUNDS: Record<SoundType, AudioFile> = {
   chime: {
     name: "chime",
     displayName: "Sanfter Gong",
-    url: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMeAznOt", // Minimal audio data
+    url: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMeAznOt",
   },
   bell: {
     name: "bell",
@@ -125,14 +125,38 @@ export class AudioManager {
     this.enabled = enabled;
   }
 
+  // Fallback sound when AudioContext fails
+  private playFallbackSound(): void {
+    try {
+      // Create a simple beep using oscillator as fallback
+      const audioCtx = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.frequency.value = 800;
+      oscillator.type = "sine";
+      gainNode.gain.value = this.volume * 0.3;
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.3);
+    } catch (error) {
+      console.warn("Audio fallback also failed:", error);
+    }
+  }
+
   async playSound(soundType: SoundType, repeat = 1): Promise<void> {
     if (!this.enabled) return;
 
     try {
+      // First try to get user interaction for audio context
       const audioCtx = initAudioContext();
 
       // Resume context if suspended (required for user interaction)
-      if (audioCtx.state === 'suspended') {
+      if (audioCtx.state === "suspended") {
         await audioCtx.resume();
       }
 
@@ -163,33 +187,10 @@ export class AudioManager {
         });
       }
     } catch (error) {
-      console.error('Error playing sound:', error);
+      console.error("Error playing sound:", error);
       // Fallback: try simple beep
       this.playFallbackSound();
     }
-  }
-
-  // Fallback sound when AudioContext fails
-  private playFallbackSound(): void {
-    try {
-      // Create a simple beep using oscillator as fallback
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-
-      oscillator.frequency.value = 800;
-      oscillator.type = 'sine';
-      gainNode.gain.value = this.volume * 0.3;
-
-      oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.3);
-    } catch (error) {
-      console.warn('Audio fallback also failed:', error);
-    }
-  }
   }
 
   // Play reminder sound
@@ -205,6 +206,42 @@ export class AudioManager {
   // Test sound for settings
   async testSound(soundType: SoundType): Promise<void> {
     return this.playSound(soundType, 1);
+  }
+
+  // Force play sound (for testing - tries to ensure audio context is ready)
+  async forcePlaySound(soundType: SoundType): Promise<void> {
+    if (!this.enabled) return;
+
+    try {
+      // Create a new audio context specifically for this test
+      const audioCtx = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+
+      // Try to resume immediately
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+      }
+
+      const buffer = generateAudioBuffer(soundType);
+      const source = audioCtx.createBufferSource();
+      const gainNode = audioCtx.createGain();
+
+      source.buffer = buffer;
+      gainNode.gain.value = this.volume;
+
+      source.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      source.start();
+
+      // Clean up after playing
+      setTimeout(() => {
+        audioCtx.close();
+      }, 1000);
+    } catch (error) {
+      console.error("Error force playing sound:", error);
+      this.playFallbackSound();
+    }
   }
 }
 
@@ -263,6 +300,10 @@ export class SimpleAudioManager {
   }
 
   async testSound(soundType: SoundType): Promise<void> {
+    return this.playSound(soundType);
+  }
+
+  async forcePlaySound(soundType: SoundType): Promise<void> {
     return this.playSound(soundType);
   }
 }

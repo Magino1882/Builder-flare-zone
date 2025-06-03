@@ -50,6 +50,28 @@ export function ReminderSystem({ className }: ReminderSystemProps) {
     }
   }, [hasNotificationPermission, showPermissionPrompt]);
 
+  // Show reminder when it becomes active
+  useEffect(() => {
+    if (isReminderActive) {
+      // Play audio independently for better reliability
+      if (settings.soundEnabled) {
+        audioManager
+          .playReminder(settings.selectedSound as any)
+          .catch(console.error);
+      }
+    }
+  }, [isReminderActive, settings.soundEnabled, settings.selectedSound]);
+
+  // Show alarm when it becomes active
+  useEffect(() => {
+    if (isAlarmActive) {
+      // Play alarm sound
+      if (settings.soundEnabled) {
+        audioManager.playAlarm().catch(console.error);
+      }
+    }
+  }, [isAlarmActive, settings.soundEnabled]);
+
   const handleRequestPermission = async () => {
     const granted = await requestPermission();
     if (granted) {

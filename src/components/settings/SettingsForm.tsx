@@ -28,6 +28,14 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useReminders } from "@/hooks/useReminders";
 import { audioManager, AVAILABLE_SOUNDS, SoundType } from "@/lib/audio";
+import {
+  formatTime,
+  parseTimeInput,
+  isValidTimeFormat,
+  getTimePlaceholder,
+  getTimeInputType,
+  TimeFormat,
+} from "@/lib/timeFormat";
 
 interface SettingsFormProps {
   className?: string;
@@ -50,7 +58,8 @@ export function SettingsForm({ className }: SettingsFormProps) {
 
     // Validate time format based on current setting
     if (!isValidTimeFormat(newReminderTime, settings.timeFormat)) {
-      const formatExample = settings.timeFormat === '24h' ? 'HH:MM' : 'h:MM AM/PM';
+      const formatExample =
+        settings.timeFormat === "24h" ? "HH:MM" : "h:MM AM/PM";
       toast.error(`Bitte gib eine gültige Zeit im Format ${formatExample} ein`);
       return;
     }
@@ -60,14 +69,14 @@ export function SettingsForm({ className }: SettingsFormProps) {
 
     // Check if time already exists
     if (settings.reminderTimes.includes(time24h)) {
-      toast.error('Diese Erinnerungszeit existiert bereits');
+      toast.error("Diese Erinnerungszeit existiert bereits");
       return;
     }
 
     const updatedTimes = [...settings.reminderTimes, time24h].sort();
     updateSettings({ reminderTimes: updatedTimes });
-    setNewReminderTime('');
-    toast.success('Erinnerungszeit hinzugefügt');
+    setNewReminderTime("");
+    toast.success("Erinnerungszeit hinzugefügt");
   };
 
   const handleRemoveReminderTime = (timeToRemove: string) => {
@@ -91,12 +100,17 @@ export function SettingsForm({ className }: SettingsFormProps) {
 
     setIsTestingSound(soundType);
     try {
-      await audioManager.testSound(soundType);
+      // Use forcePlaySound for better testing experience
+      (await (audioManager as any).forcePlaySound?.(soundType)) ||
+        audioManager.testSound(soundType);
+      toast.success(
+        `Sound "${AVAILABLE_SOUNDS[soundType].displayName}" abgespielt`,
+      );
     } catch (error) {
       console.error("Error testing sound:", error);
       toast.error("Fehler beim Abspielen des Sounds");
     } finally {
-      setIsTestingSound(null);
+      setTimeout(() => setIsTestingSound(null), 1000);
     }
   };
 
@@ -143,6 +157,40 @@ export function SettingsForm({ className }: SettingsFormProps) {
         </Alert>
       )}
 
+      {/* Time Format Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-blue-500" />
+            Zeitformat
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Zeitformat auswählen</Label>
+            <Select
+              value={settings.timeFormat}
+              onValueChange={(value: TimeFormat) =>
+                updateSettings({ timeFormat: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">24-Stunden Format (HH:MM)</SelectItem>
+                <SelectItem value="12h">
+                  12-Stunden Format (h:MM AM/PM)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-gray-500">
+              Dieses Format wird für alle Zeitanzeigen in der App verwendet.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Reminder Times */}
       <Card>
         <CardHeader>
@@ -152,53 +200,38 @@ export function SettingsForm({ className }: SettingsFormProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-        {/* Time Format Selection */}
-        <div className="space-y-2">
-          <Label>Zeitformat</Label>
-          <Select
-            value={settings.timeFormat}
-            onValueChange={(value: TimeFormat) => updateSettings({ timeFormat: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="24h">24-Stunden (HH:MM)</SelectItem>
-              <SelectItem value="12h">12-Stunden (h:MM AM/PM)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Current reminder times */}
-        <div className="space-y-2">
-          <Label>Aktuelle Erinnerungen</Label>
-          <div className="flex flex-wrap gap-2">
-            {settings.reminderTimes.map((time) => (
-              <motion.div
-                key={time}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                className="flex items-center gap-1"
-              >
-                <Badge variant="secondary" className="px-3 py-1">
-                  {formatTime(time, settings.timeFormat)}
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveReminderTime(time)}
-                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+          {/* Current reminder times */}
+          <div className="space-y-2">
+            <Label>Aktuelle Erinnerungen</Label>
+            <div className="flex flex-wrap gap-2">
+              {settings.reminderTimes.map((time) => (
+                <motion.div
+                  key={time}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  className="flex items-center gap-1"
                 >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </motion.div>
-            ))}
-            {settings.reminderTimes.length === 0 && (
-              <span className="text-sm text-gray-500">Keine Erinnerungen konfiguriert</span>
-            )}
+                  <Badge variant="secondary" className="px-3 py-1">
+                    {formatTime(time, settings.timeFormat)}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveReminderTime(time)}
+                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </motion.div>
+              ))}
+              {settings.reminderTimes.length === 0 && (
+                <span className="text-sm text-gray-500">
+                  Keine Erinnerungen konfiguriert
+                </span>
+              )}
+            </div>
           </div>
-        }
 
           {/* Add new reminder time */}
           <div className="flex gap-2">
@@ -323,6 +356,50 @@ export function SettingsForm({ className }: SettingsFormProps) {
         </CardContent>
       </Card>
 
+      {/* Audio Test Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TestTube className="h-5 w-5 text-blue-500" />
+            Audio-Test
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Teste verschiedene Sounds, um sicherzustellen, dass Audio
+            funktioniert. Falls kein Sound zu hören ist, überprüfe die
+            Browser-Einstellungen für Audio-Autoplay.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(AVAILABLE_SOUNDS).map(([key, sound]) => (
+              <Button
+                key={key}
+                variant="outline"
+                size="sm"
+                onClick={() => handleTestSound(key as SoundType)}
+                disabled={isTestingSound === key || !settings.soundEnabled}
+                className="flex items-center gap-2"
+              >
+                {isTestingSound === key ? (
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                ) : (
+                  <Volume2 className="h-3 w-3" />
+                )}
+                {sound.displayName}
+              </Button>
+            ))}
+          </div>
+          {!settings.soundEnabled && (
+            <Alert>
+              <Volume2 className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                Aktiviere Sound-Benachrichtigungen, um Töne zu testen.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Alarm Settings */}
       <Card>
         <CardHeader>
@@ -359,68 +436,26 @@ export function SettingsForm({ className }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-        {/* Audio Test Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TestTube className="h-5 w-5 text-blue-500" />
-              Audio-Test
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Teste verschiedene Sounds, um sicherzustellen, dass Audio funktioniert.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(AVAILABLE_SOUNDS).map(([key, sound]) => (
-                <Button
-                  key={key}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleTestSound(key as SoundType)}
-                  disabled={isTestingSound === key || !settings.soundEnabled}
-                  className="flex items-center gap-2"
-                >
-                  {isTestingSound === key ? (
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                  ) : (
-                    <Volume2 className="h-3 w-3" />
-                  )}
-                  {sound.displayName}
-                </Button>
-              ))}
-            </div>
-            {!settings.soundEnabled && (
-              <Alert>
-                <Volume2 className="h-4 w-4" />
-                <AlertDescription className="text-sm">
-                  Aktiviere Sound-Benachrichtigungen, um Töne zu testen.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Save Button */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
+      {/* Save Button */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="w-full"
+          size="lg"
         >
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full"
-            size="lg"
-          >
-            {isSaving ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Einstellungen speichern
-          </Button>
-        </motion.div>
+          {isSaving ? (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+          ) : (
+            <Save className="h-4 w-4 mr-2" />
+          )}
+          Einstellungen speichern
+        </Button>
+      </motion.div>
     </div>
   );
 }
